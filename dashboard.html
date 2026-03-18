@@ -570,8 +570,31 @@
         }
 
         document.getElementById('alert-banner').style.display = '';
+        const SHOW_LIMIT = 10;
+        const shown = urgent.slice(0, SHOW_LIMIT);
+        const remaining = urgent.length - SHOW_LIMIT;
+
         const list = document.getElementById('alert-list');
-        list.innerHTML = urgent.map(b => {
+        list.innerHTML = shown.map(b => {
+            const url = congressGovUrl(b);
+            const pages = b.estimated_pages ? ` (${b.estimated_pages} pages)` : '';
+            return `<li>
+                <span><a href="${url}" target="_blank">${b.type} ${b.number}</a> &mdash; ${b.title}${pages}</span>
+                <span class="wait-badge">${b.pending_days || '?'}+ days waiting</span>
+            </li>`;
+        }).join('');
+
+        if (remaining > 0) {
+            list.innerHTML += `<li id="show-all-alert" style="cursor:pointer;color:var(--primary);font-weight:500;border:none;padding-top:0.5rem">
+                <span onclick="showAllAlertBills()">Show all ${urgent.length} committee-reported bills without summaries...</span>
+            </li>`;
+            window._allAlertBills = urgent;
+        }
+    }
+
+    function showAllAlertBills() {
+        const list = document.getElementById('alert-list');
+        list.innerHTML = window._allAlertBills.map(b => {
             const url = congressGovUrl(b);
             const pages = b.estimated_pages ? ` (${b.estimated_pages} pages)` : '';
             return `<li>

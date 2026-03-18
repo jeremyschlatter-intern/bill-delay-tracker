@@ -131,7 +131,7 @@ def main():
     # PHASE 2: Get all bill listings
     # ============================================
     print("\nPhase 2: Fetching bill listings...")
-    bill_types = ["hr", "s", "hjres", "sjres", "hconres", "sconres"]
+    bill_types = ["hr", "s", "hres", "sres", "hjres", "sjres", "hconres", "sconres"]
     all_bill_listings = []
 
     for bt in bill_types:
@@ -159,8 +159,8 @@ def main():
             "number": bill_number,
             "title": listing.get("title", ""),
             "introduced_date": None,
-            "latest_action_date": listing.get("latestAction", {}).get("actionDate"),
-            "latest_action_text": listing.get("latestAction", {}).get("text"),
+            "latest_action_date": (listing.get("latestAction") or {}).get("actionDate"),
+            "latest_action_text": (listing.get("latestAction") or {}).get("text"),
             "has_text": True,  # Will refine below
             "text_count": 0,
             "has_summary": bill_key in summary_index,
@@ -179,11 +179,10 @@ def main():
         }
 
         # Check for committee reporting in latest action
+        # Only flag actual committee reporting actions, not later legislative stages
         action_text = (record["latest_action_text"] or "").lower()
         report_phrases = ["reported by", "reported favorably", "ordered to be reported",
-                          "reported with", "reported without", "committee discharged",
-                          "placed on", "passed house", "passed senate",
-                          "resolving differences", "became public law", "signed by president"]
+                          "reported with", "reported without", "committee discharged"]
         if any(p in action_text for p in report_phrases):
             record["reported_by_committee"] = True
             record["committee_report_date"] = record["latest_action_date"]
