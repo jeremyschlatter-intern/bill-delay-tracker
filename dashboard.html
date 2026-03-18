@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill Delay Tracker - Congress.gov Summary Delays</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #1a1a2e;
+            --text-muted: #6c757d;
+            --primary: #2c3e8f;
+            --danger: #c0392b;
+            --warning: #e67e22;
+            --success: #27ae60;
+            --info: #2980b9;
+            --border: #dee2e6;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 { font-size: 1.5rem; font-weight: 600; }
+        .header .subtitle { font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem; }
+        .header .meta { text-align: right; font-size: 0.8rem; opacity: 0.7; }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+
+        /* Alert Banner */
+        .alert-banner {
+            background: linear-gradient(135deg, #fdecea 0%, #fff5f5 100%);
+            border: 2px solid var(--danger);
+            border-radius: 8px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .alert-banner h2 {
+            font-size: 1.1rem;
+            color: var(--danger);
+            margin-bottom: 0.5rem;
+        }
+        .alert-banner p {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .alert-banner .alert-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 0.75rem;
+        }
+        .alert-banner .alert-list li {
+            padding: 0.35rem 0;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(192,57,43,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .alert-banner .alert-list li:last-child { border-bottom: none; }
+        .alert-banner .alert-list a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .alert-banner .alert-list a:hover { text-decoration: underline; }
+        .alert-banner .alert-list .wait-badge {
+            background: var(--danger);
+            color: white;
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* Summary Cards */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.25rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .stat-card { text-align: center; }
+        .stat-card .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+        .stat-card .value { font-size: 2rem; font-weight: 700; }
+        .stat-card .detail { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; }
+        .stat-card.danger .value { color: var(--danger); }
+        .stat-card.warning .value { color: var(--warning); }
+        .stat-card.success .value { color: var(--success); }
+        .stat-card.info .value { color: var(--info); }
+
+        /* Chart Section */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.25rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+        .chart-card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text); }
+        .chart-card .chart-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+        .chart-container { position: relative; height: 300px; }
+        .chart-card.full-width { grid-column: 1 / -1; }
+
+        /* Key Findings */
+        .findings {
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        .findings h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem; }
+        .findings ul { list-style: none; padding: 0; }
+        .findings li {
+            padding: 0.4rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            font-size: 0.85rem;
+        }
+        .findings li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.65rem;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+        }
+
+        /* Table Section */
+        .table-section {
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .table-header h3 { font-size: 0.95rem; font-weight: 600; }
+
+        .table-controls {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .table-controls select, .table-controls input {
+            padding: 0.35rem 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        .table-controls input { width: 200px; }
+
+        .btn {
+            padding: 0.35rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .btn:hover { background: #f1f3f5; }
+        .btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
+        .btn-primary:hover { background: #1e2d6b; }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        .data-table th {
+            background: #f1f3f5;
+            padding: 0.6rem 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: var(--text-muted);
+            cursor: pointer;
+            white-space: nowrap;
+            user-select: none;
+            border-bottom: 2px solid var(--border);
+        }
+        .data-table th:hover { background: #e9ecef; }
+        .data-table th .sort-arrow { margin-left: 4px; opacity: 0.3; }
+        .data-table th.sorted .sort-arrow { opacity: 1; }
+        .data-table td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid #f1f3f5;
+            vertical-align: top;
+        }
+        .data-table tr:hover { background: #f8f9fa; }
+        .data-table .bill-title {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .data-table a { color: var(--primary); text-decoration: none; font-weight: 600; }
+        .data-table a:hover { text-decoration: underline; }
+
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .badge-danger { background: #fdecea; color: var(--danger); }
+        .badge-success { background: #eafaf1; color: var(--success); }
+        .badge-warning { background: #fef5e7; color: var(--warning); }
+        .badge-info { background: #ebf5fb; color: var(--info); }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+        .pagination button {
+            padding: 0.35rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination button:hover:not(:disabled) { background: #f1f3f5; }
+        .pagination .page-info { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* Methodology */
+        .methodology {
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        .methodology h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem; }
+        .methodology p { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; line-height: 1.6; }
+        .methodology details { margin-top: 0.5rem; }
+        .methodology summary {
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        @media (max-width: 900px) {
+            .charts-grid { grid-template-columns: 1fr; }
+            .summary-cards { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .summary-cards { grid-template-columns: 1fr; }
+            .header { flex-direction: column; text-align: center; }
+            .header .meta { text-align: center; margin-top: 0.5rem; }
+            .table-controls { flex-direction: column; }
+            .table-controls input { width: 100%; }
+        }
+
+        .loading { text-align: center; padding: 3rem; color: var(--text-muted); }
+        .loading-spinner {
+            width: 40px; height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>Bill Delay Tracker</h1>
+            <div class="subtitle">Tracking how long Congress.gov takes to publish CRS summaries after bill text is available</div>
+        </div>
+        <div class="meta" id="meta-info">Loading data...</div>
+    </div>
+
+    <div class="container">
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <div>Loading bill data...</div>
+        </div>
+
+        <div id="dashboard" style="display:none;">
+            <!-- URGENT: Committee-Reported Bills Alert -->
+            <div class="alert-banner" id="alert-banner" style="display:none;">
+                <h2>Committee-Reported Bills Without Summaries</h2>
+                <p>These bills have advanced through committee and could come to the floor, but staff and the public still lack CRS summaries to understand them.</p>
+                <ul class="alert-list" id="alert-list"></ul>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="summary-cards" id="summary-cards"></div>
+
+            <!-- Key Findings -->
+            <div class="findings" id="findings">
+                <h3>Key Findings</h3>
+                <ul id="findings-list"></ul>
+            </div>
+
+            <!-- Charts -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Summary Status Breakdown</h3>
+                    <p class="chart-desc">Of bills with published text, how many have CRS summaries?</p>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h3>Delay Distribution</h3>
+                    <p class="chart-desc">Days from text publication to summary creation (completed summaries only)</p>
+                    <div class="chart-container">
+                        <canvas id="delayHistogram"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h3>Delay by Estimated Page Count</h3>
+                    <p class="chart-desc">Average days to summary, grouped by bill length</p>
+                    <div class="chart-container">
+                        <canvas id="delayByPages"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h3>Committee Reporting & Summaries</h3>
+                    <p class="chart-desc">Bills reported by committee vs. all others</p>
+                    <div class="chart-container">
+                        <canvas id="committeeChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card full-width">
+                    <h3>Current Backlog: Bills Still Waiting</h3>
+                    <p class="chart-desc">How long bills with published text have been waiting for a CRS summary</p>
+                    <div class="chart-container">
+                        <canvas id="pendingChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card full-width">
+                    <h3>Pages of Text Awaiting Summaries</h3>
+                    <p class="chart-desc">Total estimated pages of unsummarized bill text, by how long they've been waiting</p>
+                    <div class="chart-container">
+                        <canvas id="pagesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-section">
+                <div class="table-header">
+                    <h3>Bill Details</h3>
+                    <div class="table-controls">
+                        <select id="filter-status">
+                            <option value="all">All Bills</option>
+                            <option value="pending">Waiting for Summary</option>
+                            <option value="summarized">Has Summary</option>
+                            <option value="committee-pending">Committee-Reported, No Summary</option>
+                            <option value="no-text">No Text</option>
+                        </select>
+                        <select id="filter-type">
+                            <option value="all">All Types</option>
+                        </select>
+                        <input type="text" id="search-input" placeholder="Search bills...">
+                        <button class="btn" onclick="exportCSV()">Export CSV</button>
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="data-table" id="bills-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="id">Bill <span class="sort-arrow">&#9650;</span></th>
+                                <th data-sort="title">Title <span class="sort-arrow">&#9650;</span></th>
+                                <th data-sort="pages">Pages <span class="sort-arrow">&#9650;</span></th>
+                                <th data-sort="status">Status <span class="sort-arrow">&#9650;</span></th>
+                                <th data-sort="delay">Delay (days) <span class="sort-arrow">&#9650;</span></th>
+                                <th data-sort="text_date">Text Published <span class="sort-arrow">&#9650;</span></th>
+                                <th data-sort="summary_date">Summary Created <span class="sort-arrow">&#9650;</span></th>
+                                <th data-sort="committee">Committee <span class="sort-arrow">&#9650;</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="bills-tbody"></tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="pagination"></div>
+            </div>
+
+            <!-- Methodology -->
+            <div class="methodology">
+                <h3>Methodology & Data Notes</h3>
+                <p>This dashboard tracks the time between when bill text becomes available on Congress.gov and when a CRS (Congressional Research Service) summary is published. CRS summaries are essential for making legislation accessible &mdash; they provide plain-language explanations that help staff, journalists, and the public understand what bills actually do.</p>
+                <p><strong>Data source:</strong> Congress.gov API (api.congress.gov). All bill types from the selected Congress are included.</p>
+                <p><strong>Delay calculation:</strong> For each bill, we compare the earliest text version publication date against the earliest summary update date. "Pending" bills have published text but no summary yet; their wait time is calculated from text publication to today.</p>
+                <details>
+                    <summary>Page count estimation</summary>
+                    <p style="margin-top:0.5rem">Page counts are estimated from bill text word counts (approximately 275 words per printed page). These are approximations &mdash; actual page counts in the printed PDF may differ somewhat. The estimates are used to give a sense of bill complexity and the volume of text awaiting summarization.</p>
+                </details>
+                <details>
+                    <summary>Committee reporting</summary>
+                    <p style="margin-top:0.5rem">A bill is marked as "reported by committee" if its action history includes actions such as "ordered to be reported," "reported favorably," or "committee discharged." These bills have advanced through the committee process and are more likely to receive floor consideration, making the absence of a summary more consequential.</p>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Bill Delay Tracker &mdash; Data from <a href="https://api.congress.gov" style="color:var(--text-muted)">Congress.gov API</a>
+    </div>
+
+    <script>
+    // ============================================================
+    // DATA LOADING
+    // ============================================================
+    let DATA = null;
+
+    async function loadData() {
+        if (typeof EMBEDDED_DATA !== 'undefined') return EMBEDDED_DATA;
+        try {
+            const resp = await fetch('data/bills_119.json');
+            if (resp.ok) return await resp.json();
+        } catch(e) {}
+        try {
+            const resp = await fetch('./data/bills_119.json');
+            if (resp.ok) return await resp.json();
+        } catch(e) {}
+        throw new Error('Could not load bill data');
+    }
+
+    // ============================================================
+    // HELPERS
+    // ============================================================
+    const COLORS = {
+        danger: '#c0392b',
+        dangerLight: 'rgba(192, 57, 43, 0.15)',
+        warning: '#e67e22',
+        warningLight: 'rgba(230, 126, 34, 0.15)',
+        success: '#27ae60',
+        successLight: 'rgba(39, 174, 96, 0.15)',
+        info: '#2980b9',
+        infoLight: 'rgba(41, 128, 185, 0.15)',
+        primary: '#2c3e8f',
+        primaryLight: 'rgba(44, 62, 143, 0.15)',
+        grey: '#95a5a6',
+        greyLight: 'rgba(149, 165, 166, 0.15)',
+    };
+
+    let currentSort = { col: 'delay', dir: 'desc' };
+    let currentPage = 1;
+    const PAGE_SIZE = 25;
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function congressGovUrl(bill) {
+        const type = bill.type.toLowerCase().replace('hconres','house-concurrent-resolution')
+            .replace('sconres','senate-concurrent-resolution')
+            .replace('hjres','house-joint-resolution')
+            .replace('sjres','senate-joint-resolution')
+            .replace('hres','house-resolution')
+            .replace('sres','senate-resolution')
+            .replace('hr','house-bill')
+            .replace(/^s$/i,'senate-bill');
+        return `https://www.congress.gov/bill/${bill.congress}th-congress/${type}/${bill.number}`;
+    }
+
+    function getStatus(bill) {
+        if (!bill.has_text) return 'no-text';
+        if (bill.has_summary) return 'summarized';
+        return 'pending';
+    }
+
+    function getDelayValue(bill) {
+        if (bill.delay_days !== null) return bill.delay_days;
+        if (bill.pending_days !== null) return bill.pending_days;
+        return -1;
+    }
+
+    // ============================================================
+    // ALERT BANNER - Committee-Reported Bills
+    // ============================================================
+    function renderAlertBanner(bills) {
+        const urgent = bills
+            .filter(b => b.reported_by_committee && b.has_text && !b.has_summary)
+            .sort((a, b) => (b.pending_days || 0) - (a.pending_days || 0));
+
+        if (urgent.length === 0) {
+            document.getElementById('alert-banner').style.display = 'none';
+            return;
+        }
+
+        document.getElementById('alert-banner').style.display = '';
+        const list = document.getElementById('alert-list');
+        list.innerHTML = urgent.map(b => {
+            const url = congressGovUrl(b);
+            const pages = b.estimated_pages ? ` (${b.estimated_pages} pages)` : '';
+            return `<li>
+                <span><a href="${url}" target="_blank">${b.type} ${b.number}</a> &mdash; ${b.title}${pages}</span>
+                <span class="wait-badge">${b.pending_days || '?'}+ days waiting</span>
+            </li>`;
+        }).join('');
+    }
+
+    // ============================================================
+    // SUMMARY CARDS
+    // ============================================================
+    function renderSummaryCards(stats, bills) {
+        const pending = bills.filter(b => b.has_text && !b.has_summary);
+        const pendingPages = pending.reduce((sum, b) => sum + (b.estimated_pages || 0), 0);
+        const reportedPending = bills.filter(b => b.reported_by_committee && b.has_text && !b.has_summary);
+
+        const cards = [
+            { label: 'Bills Tracked', value: stats.total_bills.toLocaleString(), cls: 'info', detail: `${stats.bills_with_text} with published text` },
+            { label: 'Awaiting Summary', value: stats.bills_with_text_no_summary, cls: 'danger', detail: `${Math.round(stats.bills_with_text_no_summary / Math.max(1, stats.bills_with_text) * 100)}% of bills with text` },
+            { label: 'Committee Bills w/o Summary', value: reportedPending.length, cls: 'danger', detail: `Of ${stats.bills_reported_by_committee} reported by committee` },
+            { label: 'Median Delay', value: stats.delay.median !== undefined ? `${stats.delay.median}d` : 'N/A', cls: 'warning', detail: stats.delay.min !== undefined ? `Range: ${stats.delay.min}\u2013${stats.delay.max} days` : '' },
+            { label: 'Median Pending Wait', value: stats.pending.median !== undefined ? `${stats.pending.median}d` : 'N/A', cls: 'danger', detail: stats.pending.max ? `Longest: ${stats.pending.max} days` : '' },
+            { label: 'Pages Awaiting Summary', value: pendingPages.toLocaleString(), cls: 'warning', detail: `Across ${pending.filter(b => b.estimated_pages).length} bills` },
+        ];
+
+        document.getElementById('summary-cards').innerHTML = cards.map(c => `
+            <div class="card stat-card ${c.cls}">
+                <div class="label">${c.label}</div>
+                <div class="value">${c.value}</div>
+                <div class="detail">${c.detail}</div>
+            </div>
+        `).join('');
+    }
+
+    // ============================================================
+    // KEY FINDINGS
+    // ============================================================
+    function renderFindings(stats, bills) {
+        const withText = bills.filter(b => b.has_text);
+        const pending = bills.filter(b => b.has_text && !b.has_summary);
+        const summarized = bills.filter(b => b.has_summary);
+        const reported = bills.filter(b => b.reported_by_committee);
+        const reportedPending = reported.filter(b => b.has_text && !b.has_summary);
+
+        const pct = Math.round(pending.length / Math.max(1, withText.length) * 100);
+        const pendingPages = pending.reduce((sum, b) => sum + (b.estimated_pages || 0), 0);
+
+        const findings = [];
+
+        // Lead with committee-reported bills (most actionable)
+        if (reportedPending.length > 0) {
+            const maxWait = Math.max(...reportedPending.map(b => b.pending_days || 0));
+            findings.push(`<strong style="color:var(--danger)">${reportedPending.length} bills reported by committee</strong> still lack CRS summaries. These bills could come to the floor without accessible explanations for staff or the public. The longest has been waiting <strong>${maxWait} days</strong>.`);
+        }
+
+        findings.push(`<strong>${pct}%</strong> of bills with published text (${pending.length} of ${withText.length}) are still waiting for a CRS summary.`);
+
+        if (stats.delay.median !== undefined) {
+            findings.push(`When summaries are created, they take a median of <strong>${stats.delay.median} days</strong> after text publication (average: ${stats.delay.mean} days).`);
+        }
+
+        if (stats.pending.median !== undefined) {
+            findings.push(`Bills currently in the backlog have been waiting for a median of <strong>${stats.pending.median} days</strong>, with the longest at <strong>${stats.pending.max} days</strong>.`);
+        }
+
+        if (pendingPages > 0) {
+            findings.push(`An estimated <strong>${pendingPages.toLocaleString()} pages</strong> of bill text across ${pending.filter(b => b.estimated_pages).length} bills are awaiting summaries.`);
+        }
+
+        // Check if longer bills have longer delays
+        const withPages = summarized.filter(b => b.estimated_pages && b.delay_days !== null);
+        if (withPages.length > 10) {
+            const shortBills = withPages.filter(b => b.estimated_pages <= 5);
+            const longBills = withPages.filter(b => b.estimated_pages > 10);
+            if (shortBills.length > 3 && longBills.length > 3) {
+                const shortAvg = Math.round(shortBills.reduce((s, b) => s + b.delay_days, 0) / shortBills.length);
+                const longAvg = Math.round(longBills.reduce((s, b) => s + b.delay_days, 0) / longBills.length);
+                if (longAvg > shortAvg * 1.2) {
+                    findings.push(`Longer bills wait longer: bills over 10 pages average <strong>${longAvg} days</strong> for summaries vs. <strong>${shortAvg} days</strong> for bills under 5 pages.`);
+                }
+            }
+        }
+
+        document.getElementById('findings-list').innerHTML = findings.map(f => `<li>${f}</li>`).join('');
+    }
+
+    // ============================================================
+    // CHARTS
+    // ============================================================
+    function renderStatusChart(bills) {
+        const withTextAndSummary = bills.filter(b => b.has_text && b.has_summary).length;
+        const withTextNoSummary = bills.filter(b => b.has_text && !b.has_summary).length;
+        const noText = bills.filter(b => !b.has_text).length;
+
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Has Summary', 'Waiting for Summary', 'No Text Published'],
+                datasets: [{
+                    data: [withTextAndSummary, withTextNoSummary, noText],
+                    backgroundColor: [COLORS.success, COLORS.danger, COLORS.grey],
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 15, font: { size: 12 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
+                                const pct = Math.round(ctx.raw / total * 100);
+                                return `${ctx.label}: ${ctx.raw} bills (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderDelayHistogram(bills) {
+        const delays = bills.filter(b => b.delay_days !== null).map(b => b.delay_days);
+        if (delays.length === 0) return;
+
+        const bins = [0, 7, 14, 30, 60, 90, 120, 180, 365, Infinity];
+        const labels = ['0\u20137', '8\u201314', '15\u201330', '31\u201360', '61\u201390', '91\u2013120', '121\u2013180', '181\u2013365', '365+'];
+        const counts = new Array(labels.length).fill(0);
+
+        delays.forEach(d => {
+            for (let i = 0; i < bins.length - 1; i++) {
+                if (d >= bins[i] && d < bins[i+1]) { counts[i]++; break; }
+            }
+        });
+
+        new Chart(document.getElementById('delayHistogram'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Number of Bills',
+                    data: counts,
+                    backgroundColor: counts.map((_, i) => i <= 1 ? COLORS.success : i <= 3 ? COLORS.warning : COLORS.danger),
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { title: { display: true, text: 'Days to Summary' } },
+                    y: { title: { display: true, text: 'Number of Bills' }, beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    function renderDelayByPages(bills) {
+        const data = bills.filter(b => b.delay_days !== null && b.estimated_pages !== null);
+        if (data.length === 0) return;
+
+        const pageBins = [
+            { label: '1\u20132', min: 1, max: 2 },
+            { label: '3\u20135', min: 3, max: 5 },
+            { label: '6\u201310', min: 6, max: 10 },
+            { label: '11\u201325', min: 11, max: 25 },
+            { label: '26\u201350', min: 26, max: 50 },
+            { label: '51+', min: 51, max: Infinity },
+        ];
+
+        const avgDelays = pageBins.map(bin => {
+            const matching = data.filter(b => b.estimated_pages >= bin.min && b.estimated_pages <= bin.max);
+            if (matching.length === 0) return null;
+            return {
+                avg: Math.round(matching.reduce((s, b) => s + b.delay_days, 0) / matching.length),
+                count: matching.length
+            };
+        });
+
+        new Chart(document.getElementById('delayByPages'), {
+            type: 'bar',
+            data: {
+                labels: pageBins.map(b => b.label + ' pages'),
+                datasets: [{
+                    label: 'Avg Delay (days)',
+                    data: avgDelays.map(d => d ? d.avg : 0),
+                    backgroundColor: COLORS.primaryLight,
+                    borderColor: COLORS.primary,
+                    borderWidth: 1.5,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: (ctx) => {
+                                const d = avgDelays[ctx.dataIndex];
+                                return d ? `(${d.count} bills)` : '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Estimated Page Count' } },
+                    y: { title: { display: true, text: 'Average Delay (days)' }, beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    function renderCommitteeChart(bills) {
+        const reported = bills.filter(b => b.reported_by_committee);
+        const notReported = bills.filter(b => !b.reported_by_committee && b.has_text);
+
+        const hasSummary = [
+            reported.filter(b => b.has_summary).length,
+            notReported.filter(b => b.has_summary).length
+        ];
+        const noSummary = [
+            reported.filter(b => b.has_text && !b.has_summary).length,
+            notReported.filter(b => !b.has_summary).length
+        ];
+
+        new Chart(document.getElementById('committeeChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Reported by Committee', 'Not Reported'],
+                datasets: [
+                    { label: 'Has Summary', data: hasSummary, backgroundColor: COLORS.success, borderRadius: 4 },
+                    { label: 'Awaiting Summary', data: noSummary, backgroundColor: COLORS.danger, borderRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { size: 12 } } },
+                    tooltip: {
+                        callbacks: {
+                            afterBody: (items) => {
+                                const idx = items[0].dataIndex;
+                                const group = idx === 0 ? reported : notReported;
+                                const withDelay = group.filter(b => b.delay_days !== null);
+                                if (withDelay.length > 0) {
+                                    const avg = Math.round(withDelay.reduce((s,b) => s + b.delay_days, 0) / withDelay.length);
+                                    return `Avg delay: ${avg} days`;
+                                }
+                                return '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {},
+                    y: { title: { display: true, text: 'Number of Bills' }, beginAtZero: true, stacked: true }
+                },
+                interaction: { mode: 'index' },
+            }
+        });
+    }
+
+    function renderPendingChart(bills) {
+        const pending = bills.filter(b => b.has_text && !b.has_summary && b.pending_days !== null);
+        if (pending.length === 0) return;
+
+        const bins = [0, 30, 60, 90, 120, 180, 270, 365, Infinity];
+        const labels = ['<30d', '30\u201360d', '60\u201390d', '90\u2013120d', '120\u2013180d', '180\u2013270d', '270\u2013365d', '365d+'];
+        const counts = new Array(labels.length).fill(0);
+
+        pending.forEach(b => {
+            for (let i = 0; i < bins.length - 1; i++) {
+                if (b.pending_days >= bins[i] && b.pending_days < bins[i+1]) { counts[i]++; break; }
+            }
+        });
+
+        new Chart(document.getElementById('pendingChart'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Bills Waiting',
+                    data: counts,
+                    backgroundColor: counts.map((_, i) => i <= 1 ? COLORS.warningLight : i <= 3 ? COLORS.warning : COLORS.danger),
+                    borderColor: counts.map((_, i) => i <= 3 ? COLORS.warning : COLORS.danger),
+                    borderWidth: 1.5,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { title: { display: true, text: 'Days Waiting' } },
+                    y: { title: { display: true, text: 'Number of Bills' }, beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    function renderPagesChart(bills) {
+        const pending = bills.filter(b => b.has_text && !b.has_summary && b.pending_days !== null && b.estimated_pages);
+
+        const bins = [0, 30, 60, 90, 120, 180, 270, 365, Infinity];
+        const labels = ['<30d', '30\u201360d', '60\u201390d', '90\u2013120d', '120\u2013180d', '180\u2013270d', '270\u2013365d', '365d+'];
+        const pages = new Array(labels.length).fill(0);
+
+        pending.forEach(b => {
+            for (let i = 0; i < bins.length - 1; i++) {
+                if (b.pending_days >= bins[i] && b.pending_days < bins[i+1]) {
+                    pages[i] += b.estimated_pages;
+                    break;
+                }
+            }
+        });
+
+        new Chart(document.getElementById('pagesChart'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Total Pages',
+                    data: pages,
+                    backgroundColor: COLORS.primaryLight,
+                    borderColor: COLORS.primary,
+                    borderWidth: 1.5,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { title: { display: true, text: 'Days Waiting' } },
+                    y: { title: { display: true, text: 'Estimated Pages of Text' }, beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    // ============================================================
+    // TABLE
+    // ============================================================
+    let filteredBills = [];
+
+    function getFilteredBills(bills) {
+        const statusFilter = document.getElementById('filter-status').value;
+        const typeFilter = document.getElementById('filter-type').value;
+        const search = document.getElementById('search-input').value.toLowerCase();
+
+        return bills.filter(b => {
+            const status = getStatus(b);
+            if (statusFilter === 'committee-pending') {
+                if (!b.reported_by_committee || !b.has_text || b.has_summary) return false;
+            } else if (statusFilter !== 'all' && status !== statusFilter) return false;
+            if (typeFilter !== 'all' && b.type !== typeFilter) return false;
+            if (search && !(`${b.type}${b.number} ${b.type} ${b.number} ${b.title}`).toLowerCase().includes(search)) return false;
+            return true;
+        });
+    }
+
+    function sortBills(bills) {
+        const { col, dir } = currentSort;
+        const mult = dir === 'asc' ? 1 : -1;
+
+        return [...bills].sort((a, b) => {
+            let va, vb;
+            switch(col) {
+                case 'id': va = `${a.type}${String(a.number).padStart(6,'0')}`; vb = `${b.type}${String(b.number).padStart(6,'0')}`; break;
+                case 'title': va = a.title || ''; vb = b.title || ''; break;
+                case 'pages': va = a.estimated_pages || 0; vb = b.estimated_pages || 0; break;
+                case 'status': va = getStatus(a); vb = getStatus(b); break;
+                case 'delay': va = getDelayValue(a); vb = getDelayValue(b); break;
+                case 'text_date': va = a.text_first_date || ''; vb = b.text_first_date || ''; break;
+                case 'summary_date': va = a.summary_first_date || ''; vb = b.summary_first_date || ''; break;
+                case 'committee': va = a.reported_by_committee ? 1 : 0; vb = b.reported_by_committee ? 1 : 0; break;
+                default: va = 0; vb = 0;
+            }
+            if (va < vb) return -1 * mult;
+            if (va > vb) return 1 * mult;
+            return 0;
+        });
+    }
+
+    function renderTable(bills) {
+        filteredBills = sortBills(getFilteredBills(bills));
+        const totalPages = Math.ceil(filteredBills.length / PAGE_SIZE);
+        currentPage = Math.min(currentPage, Math.max(1, totalPages));
+
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const pageBills = filteredBills.slice(start, start + PAGE_SIZE);
+
+        const tbody = document.getElementById('bills-tbody');
+        tbody.innerHTML = pageBills.map(b => {
+            const status = getStatus(b);
+            const statusBadge = status === 'summarized'
+                ? '<span class="badge badge-success">Summarized</span>'
+                : status === 'pending'
+                ? '<span class="badge badge-danger">Pending</span>'
+                : '<span class="badge badge-info">No Text</span>';
+
+            const delay = b.delay_days !== null
+                ? `${b.delay_days}`
+                : b.pending_days !== null
+                ? `<span style="color:var(--danger)">${b.pending_days}+</span>`
+                : '-';
+
+            const url = congressGovUrl(b);
+
+            return `<tr>
+                <td><a href="${url}" target="_blank">${b.type} ${b.number}</a></td>
+                <td class="bill-title" title="${(b.title||'').replace(/"/g, '&quot;')}">${b.title || ''}</td>
+                <td>${b.estimated_pages || '-'}</td>
+                <td>${statusBadge}</td>
+                <td>${delay}</td>
+                <td>${formatDate(b.text_first_date)}</td>
+                <td>${formatDate(b.summary_first_date)}</td>
+                <td>${b.reported_by_committee ? '<span class="badge badge-info">Reported</span>' : '-'}</td>
+            </tr>`;
+        }).join('');
+
+        const pag = document.getElementById('pagination');
+        pag.innerHTML = `
+            <button onclick="changePage(-1)" ${currentPage <= 1 ? 'disabled' : ''}>Prev</button>
+            <span class="page-info">Page ${currentPage} of ${totalPages} (${filteredBills.length} bills)</span>
+            <button onclick="changePage(1)" ${currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+        `;
+
+        document.querySelectorAll('.data-table th').forEach(th => {
+            th.classList.toggle('sorted', th.dataset.sort === currentSort.col);
+            const arrow = th.querySelector('.sort-arrow');
+            if (arrow) arrow.textContent = currentSort.dir === 'asc' ? '\u25B2' : '\u25BC';
+        });
+    }
+
+    function changePage(delta) {
+        currentPage += delta;
+        renderTable(DATA.bills);
+    }
+
+    // ============================================================
+    // CSV EXPORT
+    // ============================================================
+    function exportCSV() {
+        const headers = ['Bill','Title','Type','Pages','Status','Delay (days)','Text Published','Summary Created','Reported by Committee','Congress.gov URL'];
+        const rows = filteredBills.map(b => {
+            const status = getStatus(b);
+            const delay = b.delay_days !== null ? b.delay_days : b.pending_days !== null ? `${b.pending_days}+ (pending)` : '';
+            return [
+                `${b.type} ${b.number}`,
+                `"${(b.title||'').replace(/"/g, '""')}"`,
+                b.type,
+                b.estimated_pages || '',
+                status,
+                delay,
+                b.text_first_date ? b.text_first_date.split('T')[0] : '',
+                b.summary_first_date ? b.summary_first_date.split('T')[0] : '',
+                b.reported_by_committee ? 'Yes' : 'No',
+                congressGovUrl(b)
+            ].join(',');
+        });
+
+        const csv = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bill-delay-tracker-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    async function init() {
+        try {
+            DATA = await loadData();
+        } catch(e) {
+            document.getElementById('loading').innerHTML = `
+                <div style="color: var(--danger);">
+                    Failed to load data. Make sure data/bills_119.json exists.<br>
+                    Run <code>python3 collect_data.py</code> first.
+                </div>`;
+            return;
+        }
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('dashboard').style.display = '';
+
+        const meta = DATA.metadata;
+        document.getElementById('meta-info').innerHTML = `
+            ${meta.congress}th Congress<br>
+            ${meta.total_bills_processed.toLocaleString()} bills tracked<br>
+            Updated: ${formatDate(meta.collected_at)}
+        `;
+
+        const types = [...new Set(DATA.bills.map(b => b.type))].sort();
+        const typeFilter = document.getElementById('filter-type');
+        types.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t;
+            opt.textContent = t;
+            typeFilter.appendChild(opt);
+        });
+
+        renderAlertBanner(DATA.bills);
+        renderSummaryCards(DATA.statistics, DATA.bills);
+        renderFindings(DATA.statistics, DATA.bills);
+        renderStatusChart(DATA.bills);
+        renderDelayHistogram(DATA.bills);
+        renderDelayByPages(DATA.bills);
+        renderCommitteeChart(DATA.bills);
+        renderPendingChart(DATA.bills);
+        renderPagesChart(DATA.bills);
+        renderTable(DATA.bills);
+
+        document.getElementById('filter-status').addEventListener('change', () => { currentPage = 1; renderTable(DATA.bills); });
+        document.getElementById('filter-type').addEventListener('change', () => { currentPage = 1; renderTable(DATA.bills); });
+        document.getElementById('search-input').addEventListener('input', () => { currentPage = 1; renderTable(DATA.bills); });
+
+        document.querySelectorAll('.data-table th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sort;
+                if (currentSort.col === col) {
+                    currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSort = { col, dir: 'desc' };
+                }
+                renderTable(DATA.bills);
+            });
+        });
+    }
+
+    init();
+    </script>
+</body>
+</html>
