@@ -533,15 +533,20 @@
     }
 
     function congressGovUrl(bill) {
-        const type = bill.type.toLowerCase().replace('hconres','house-concurrent-resolution')
-            .replace('sconres','senate-concurrent-resolution')
-            .replace('hjres','house-joint-resolution')
-            .replace('sjres','senate-joint-resolution')
-            .replace('hres','house-resolution')
-            .replace('sres','senate-resolution')
-            .replace('hr','house-bill')
-            .replace(/^s$/i,'senate-bill');
-        return `https://www.congress.gov/bill/${bill.congress}th-congress/${type}/${bill.number}`;
+        const typeMap = {
+            'HCONRES': 'house-concurrent-resolution',
+            'SCONRES': 'senate-concurrent-resolution',
+            'HJRES': 'house-joint-resolution',
+            'SJRES': 'senate-joint-resolution',
+            'HRES': 'house-resolution',
+            'SRES': 'senate-resolution',
+            'HR': 'house-bill',
+            'S': 'senate-bill',
+        };
+        const slug = typeMap[bill.type.toUpperCase()] || bill.type.toLowerCase();
+        const c = bill.congress;
+        const suffix = (c % 10 === 1 && c !== 11) ? 'st' : (c % 10 === 2 && c !== 12) ? 'nd' : (c % 10 === 3 && c !== 13) ? 'rd' : 'th';
+        return `https://www.congress.gov/bill/${c}${suffix}-congress/${slug}/${bill.number}`;
     }
 
     function getStatus(bill) {
